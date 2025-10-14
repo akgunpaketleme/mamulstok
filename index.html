@@ -9,9 +9,46 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+        input, select {
+            outline: none;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -21,7 +58,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const UretimTakipSistemi = () => {
+        function UretimTakipSistemi() {
           const [urunler, setUrunler] = useState([]);
           const [hareketler, setHareketler] = useState([]);
           const [aktifSekme, setAktifSekme] = useState('stok');
@@ -30,28 +67,41 @@
           const [secilenUrun, setSecilenUrun] = useState(null);
           const [yeniUrunModalAcik, setYeniUrunModalAcik] = useState(false);
           const [yeniUrunAdi, setYeniUrunAdi] = useState('');
+          const [formData, setFormData] = useState({});
 
           useEffect(() => {
-            const kaydedilmisUrunler = localStorage.getItem('urunler');
-            const kaydedilmisHareketler = localStorage.getItem('hareketler');
-            
-            if (kaydedilmisUrunler) {
-              setUrunler(JSON.parse(kaydedilmisUrunler));
-            }
-            if (kaydedilmisHareketler) {
-              setHareketler(JSON.parse(kaydedilmisHareketler));
+            try {
+              const kaydedilmisUrunler = localStorage.getItem('urunler');
+              const kaydedilmisHareketler = localStorage.getItem('hareketler');
+              
+              if (kaydedilmisUrunler) {
+                setUrunler(JSON.parse(kaydedilmisUrunler));
+              }
+              if (kaydedilmisHareketler) {
+                setHareketler(JSON.parse(kaydedilmisHareketler));
+              }
+            } catch (e) {
+              console.error('Veri yükleme hatası:', e);
             }
           }, []);
 
           useEffect(() => {
             if (urunler.length > 0) {
-              localStorage.setItem('urunler', JSON.stringify(urunler));
+              try {
+                localStorage.setItem('urunler', JSON.stringify(urunler));
+              } catch (e) {
+                console.error('Veri kaydetme hatası:', e);
+              }
             }
           }, [urunler]);
 
           useEffect(() => {
             if (hareketler.length > 0) {
-              localStorage.setItem('hareketler', JSON.stringify(hareketler));
+              try {
+                localStorage.setItem('hareketler', JSON.stringify(hareketler));
+              } catch (e) {
+                console.error('Veri kaydetme hatası:', e);
+              }
             }
           }, [hareketler]);
 
@@ -79,47 +129,51 @@
             setYeniUrunAdi('');
           };
 
-          const hareketEkle = (urunId, islem, detaylar, kullanici = 'Sistem') => {
+          const hareketEkle = (urunId, islem, detaylar, kullanici) => {
+            const urun = urunler.find(u => u.id === urunId);
             const hareket = {
               id: Date.now(),
               tarih: new Date().toLocaleString('tr-TR'),
-              urunId,
-              urunAd: urunler.find(u => u.id === urunId)?.ad,
-              islem,
-              detaylar,
-              kullanici
+              urunId: urunId,
+              urunAd: urun ? urun.ad : '',
+              islem: islem,
+              detaylar: detaylar,
+              kullanici: kullanici || 'Sistem'
             };
             setHareketler([hareket, ...hareketler]);
           };
 
           const urunGuncelle = (urunId, guncellemeler) => {
-            setUrunler(urunler.map(urun => 
-              urun.id === urunId ? { ...urun, ...guncellemeler } : urun
-            ));
+            setUrunler(urunler.map(urun => {
+              if (urun.id === urunId) {
+                return { ...urun, ...guncellemeler };
+              }
+              return urun;
+            }));
           };
 
-          const islemYap = (data) => {
-            const urun = urunler.find(u => u.id === secilenUrun.id);
+          const islemYap = () => {
+            const urun = secilenUrun;
+            if (!urun) return;
             
-            switch (islemTipi) {
-              case 'temizlemeStoku':
-                const ekleA = data.islem === 'ekle';
-                const adetA = parseInt(data.adetA || 0);
-                const adetB = parseInt(data.adetB || 0);
+            if (islemTipi === 'temizlemeStoku') {
+                const ekleA = formData.islem === 'ekle';
+                const adetA = parseInt(formData.adetA || 0);
+                const adetB = parseInt(formData.adetB || 0);
                 
                 urunGuncelle(urun.id, {
                   temizlemeStokuA: ekleA ? urun.temizlemeStokuA + adetA : urun.temizlemeStokuA - adetA,
                   temizlemeStokuB: ekleA ? urun.temizlemeStokuB + adetB : urun.temizlemeStokuB - adetB
                 });
                 hareketEkle(urun.id, 'Temizleme Stoğu Düzenleme', 
-                  `${ekleA ? 'Eklendi' : 'Çıkarıldı'} - A: ${adetA}, B: ${adetB}`, 
-                  data.kullanici);
-                break;
-                
-              case 'temizlemeyeGonder':
-                const gonderilecekA = parseInt(data.adetA || 0);
-                const gonderilecekB = parseInt(data.adetB || 0);
-                const gonderilecekKg = parseFloat(data.kg || 0);
+                  (ekleA ? 'Eklendi' : 'Çıkarıldı') + ' - A: ' + adetA + ', B: ' + adetB, 
+                  formData.kullanici);
+            }
+            
+            if (islemTipi === 'temizlemeyeGonder') {
+                const gonderilecekA = parseInt(formData.adetA || 0);
+                const gonderilecekB = parseInt(formData.adetB || 0);
+                const gonderilecekKg = parseFloat(formData.kg || 0);
                 
                 urunGuncelle(urun.id, {
                   temizlemeStokuA: urun.temizlemeStokuA - gonderilecekA,
@@ -129,14 +183,14 @@
                   temizlemedekiKg: urun.temizlemedekiKg + gonderilecekKg
                 });
                 hareketEkle(urun.id, 'Temizlemeye Gönderildi', 
-                  `A: ${gonderilecekA}, B: ${gonderilecekB}, ${gonderilecekKg} kg`, 
-                  data.kullanici);
-                break;
-                
-              case 'temizlemeDondu':
-                const donenA = parseInt(data.adetA || 0);
-                const donenB = parseInt(data.adetB || 0);
-                const donenKg = parseFloat(data.kg || 0);
+                  'A: ' + gonderilecekA + ', B: ' + gonderilecekB + ', ' + gonderilecekKg + ' kg', 
+                  formData.kullanici);
+            }
+            
+            if (islemTipi === 'temizlemeDondu') {
+                const donenA = parseInt(formData.adetA || 0);
+                const donenB = parseInt(formData.adetB || 0);
+                const donenKg = parseFloat(formData.kg || 0);
                 
                 urunGuncelle(urun.id, {
                   temizlemedekiA: urun.temizlemedekiA - donenA,
@@ -146,15 +200,15 @@
                   paketlenecekB: urun.paketlenecekB + donenB
                 });
                 hareketEkle(urun.id, 'Temizlemeden Döndü', 
-                  `A: ${donenA}, B: ${donenB}, ${donenKg} kg`, 
-                  data.kullanici);
-                break;
-                
-              case 'paketleme':
-                const paketlenenAdet = parseInt(data.adet || 0);
-                const paketlenenKoli = parseInt(data.koli || 0);
-                const hurdaAdet = parseInt(data.hurda || 0);
-                const tekrarTemizlenecek = parseInt(data.tekrarTemizleme || 0);
+                  'A: ' + donenA + ', B: ' + donenB + ', ' + donenKg + ' kg', 
+                  formData.kullanici);
+            }
+            
+            if (islemTipi === 'paketleme') {
+                const paketlenenAdet = parseInt(formData.adet || 0);
+                const paketlenenKoli = parseInt(formData.koli || 0);
+                const hurdaAdet = parseInt(formData.hurda || 0);
+                const tekrarTemizlenecek = parseInt(formData.tekrarTemizleme || 0);
                 
                 urunGuncelle(urun.id, {
                   paketlenecekA: urun.paketlenecekA - paketlenenAdet - hurdaAdet - tekrarTemizlenecek,
@@ -166,244 +220,174 @@
                   temizlemeStokuB: urun.temizlemeStokuB + tekrarTemizlenecek
                 });
                 hareketEkle(urun.id, 'Paketleme', 
-                  `Paketlenen: ${paketlenenAdet} adet (${paketlenenKoli} koli), Hurda: ${hurdaAdet}, Tekrar Temizleme: ${tekrarTemizlenecek}`, 
-                  data.kullanici);
-                break;
-                
-              case 'sevk':
-                const sevkAdet = parseInt(data.adet || 0);
-                const sevkKoli = parseInt(data.koli || 0);
+                  'Paketlenen: ' + paketlenenAdet + ' adet (' + paketlenenKoli + ' koli), Hurda: ' + hurdaAdet + ', Tekrar Temizleme: ' + tekrarTemizlenecek, 
+                  formData.kullanici);
+            }
+            
+            if (islemTipi === 'sevk') {
+                const sevkAdet = parseInt(formData.adet || 0);
+                const sevkKoli = parseInt(formData.koli || 0);
                 
                 urunGuncelle(urun.id, {
                   paketlendi: urun.paketlendi - sevkAdet,
                   paketlendiKoli: urun.paketlendiKoli - sevkKoli
                 });
                 hareketEkle(urun.id, 'Sevk', 
-                  `${sevkAdet} adet (${sevkKoli} koli)`, 
-                  data.kullanici);
-                break;
+                  sevkAdet + ' adet (' + sevkKoli + ' koli)', 
+                  formData.kullanici);
             }
             
             setModalAcik(false);
+            setFormData({});
           };
 
-          const YeniUrunModal = () => {
-            if (!yeniUrunModalAcik) return null;
-
-            return (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setYeniUrunModalAcik(false)}>
-                <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-xl font-bold mb-4">🆕 Yeni Ürün Ekle</h3>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1">Ürün Adı</label>
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded"
-                      value={yeniUrunAdi}
-                      onChange={(e) => setYeniUrunAdi(e.target.value)}
-                      placeholder="Örn: Ürün A, Model X, vb."
-                      autoFocus
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button onClick={yeniUrunEkle} className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700">
-                      Ekle
-                    </button>
-                    <button onClick={() => { setYeniUrunModalAcik(false); setYeniUrunAdi(''); }} 
-                      className="flex-1 bg-gray-300 py-2 rounded hover:bg-gray-400">
-                      İptal
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
+          const modalAc = (urun, tip) => {
+            setSecilenUrun(urun);
+            setIslemTipi(tip);
+            setFormData({});
+            setModalAcik(true);
           };
 
-          const IslemModal = () => {
-            const [formData, setFormData] = useState({});
+          const formAlanlari = {
+            temizlemeStoku: [
+              { name: 'islem', label: 'İşlem Tipi', type: 'select', options: ['ekle', 'cikar'] },
+              { name: 'adetA', label: 'A Adeti', type: 'number' },
+              { name: 'adetB', label: 'B Adeti', type: 'number' },
+              { name: 'kullanici', label: 'Kaydeden', type: 'text' }
+            ],
+            temizlemeyeGonder: [
+              { name: 'adetA', label: 'Gönderilen A Adet', type: 'number', max: secilenUrun?.temizlemeStokuA },
+              { name: 'adetB', label: 'Gönderilen B Adet', type: 'number', max: secilenUrun?.temizlemeStokuB },
+              { name: 'kg', label: 'Gönderilen Net KG', type: 'number', step: '0.01' },
+              { name: 'kullanici', label: 'Gönderen', type: 'text' }
+            ],
+            temizlemeDondu: [
+              { name: 'adetA', label: 'Dönen A Adet', type: 'number', max: secilenUrun?.temizlemedekiA },
+              { name: 'adetB', label: 'Dönen B Adet', type: 'number', max: secilenUrun?.temizlemedekiB },
+              { name: 'kg', label: 'Dönen Net KG', type: 'number', step: '0.01' },
+              { name: 'kullanici', label: 'Kaydeden', type: 'text' }
+            ],
+            paketleme: [
+              { name: 'adet', label: 'Paketlenen Adet', type: 'number', max: Math.min(secilenUrun?.paketlenecekA || 0, secilenUrun?.paketlenecekB || 0) },
+              { name: 'koli', label: 'Paketlenen Koli Adeti', type: 'number' },
+              { name: 'hurda', label: 'Hurda Adet', type: 'number' },
+              { name: 'tekrarTemizleme', label: 'Tekrar Temizlenecek Adet', type: 'number' },
+              { name: 'kullanici', label: 'Paketleyen', type: 'text' }
+            ],
+            sevk: [
+              { name: 'adet', label: 'Sevk Edilen Ürün Adeti', type: 'number', max: secilenUrun?.paketlendi },
+              { name: 'koli', label: 'Sevk Edilen Koli Adeti', type: 'number', max: secilenUrun?.paketlendiKoli },
+              { name: 'kullanici', label: 'Sevk Eden', type: 'text' }
+            ]
+          };
+
+          const basliklar = {
+            temizlemeStoku: '📝 Temizleme Stoğu Düzenle',
+            temizlemeyeGonder: '🚚 Temizlemeye Gönder',
+            temizlemeDondu: '✅ Temizlemeden Döndü',
+            paketleme: '📦 Paketleme',
+            sevk: '🚛 Sevk'
+          };
+
+          const handleKaydet = () => {
+            const alanlar = formAlanlari[islemTipi];
+            let valid = true;
             
-            const formAlanlari = {
-              temizlemeStoku: [
-                { name: 'islem', label: 'İşlem Tipi', type: 'select', options: ['ekle', 'cikar'] },
-                { name: 'adetA', label: 'A Adeti', type: 'number' },
-                { name: 'adetB', label: 'B Adeti', type: 'number' },
-                { name: 'kullanici', label: 'Kaydeden', type: 'text' }
-              ],
-              temizlemeyeGonder: [
-                { name: 'adetA', label: 'Gönderilen A Adet', type: 'number', max: secilenUrun?.temizlemeStokuA },
-                { name: 'adetB', label: 'Gönderilen B Adet', type: 'number', max: secilenUrun?.temizlemeStokuB },
-                { name: 'kg', label: 'Gönderilen Net KG', type: 'number', step: '0.01' },
-                { name: 'kullanici', label: 'Gönderen', type: 'text' }
-              ],
-              temizlemeDondu: [
-                { name: 'adetA', label: 'Dönen A Adet', type: 'number', max: secilenUrun?.temizlemedekiA },
-                { name: 'adetB', label: 'Dönen B Adet', type: 'number', max: secilenUrun?.temizlemedekiB },
-                { name: 'kg', label: 'Dönen Net KG', type: 'number', step: '0.01' },
-                { name: 'kullanici', label: 'Kaydeden', type: 'text' }
-              ],
-              paketleme: [
-                { name: 'adet', label: 'Paketlenen Adet', type: 'number', 
-                  max: Math.min(secilenUrun?.paketlenecekA || 0, secilenUrun?.paketlenecekB || 0) },
-                { name: 'koli', label: 'Paketlenen Koli Adeti', type: 'number' },
-                { name: 'hurda', label: 'Hurda Adet', type: 'number' },
-                { name: 'tekrarTemizleme', label: 'Tekrar Temizlenecek Adet', type: 'number' },
-                { name: 'kullanici', label: 'Paketleyen', type: 'text' }
-              ],
-              sevk: [
-                { name: 'adet', label: 'Sevk Edilen Ürün Adeti', type: 'number', max: secilenUrun?.paketlendi },
-                { name: 'koli', label: 'Sevk Edilen Koli Adeti', type: 'number', max: secilenUrun?.paketlendiKoli },
-                { name: 'kullanici', label: 'Sevk Eden', type: 'text' }
-              ]
-            };
-
-            const basliklar = {
-              temizlemeStoku: '📝 Temizleme Stoğu Düzenle',
-              temizlemeyeGonder: '🚚 Temizlemeye Gönder',
-              temizlemeDondu: '✅ Temizlemeden Döndü',
-              paketleme: '📦 Paketleme',
-              sevk: '🚛 Sevk'
-            };
-
-            const handleKaydet = () => {
-              const alanlar = formAlanlari[islemTipi];
-              let valid = true;
-              
-              for (let alan of alanlar) {
-                if (!formData[alan.name]) {
-                  alert(`Lütfen ${alan.label} alanını doldurun`);
-                  valid = false;
-                  break;
-                }
+            for (let i = 0; i < alanlar.length; i++) {
+              const alan = alanlar[i];
+              if (!formData[alan.name]) {
+                alert('Lütfen ' + alan.label + ' alanını doldurun');
+                valid = false;
+                break;
               }
-              
-              if (valid) {
-                islemYap(formData);
-                setFormData({});
-              }
-            };
-
-            if (!modalAcik) return null;
-
-            return (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setModalAcik(false)}>
-                <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                  <h3 className="text-xl font-bold mb-4">{basliklar[islemTipi]}</h3>
-                  <p className="text-gray-600 mb-4">Ürün: <strong>{secilenUrun?.ad}</strong></p>
-                  
-                  <div>
-                    {formAlanlari[islemTipi]?.map(alan => (
-                      <div key={alan.name} className="mb-4">
-                        <label className="block text-sm font-medium mb-1">{alan.label}</label>
-                        {alan.type === 'select' ? (
-                          <select
-                            className="w-full p-2 border rounded"
-                            value={formData[alan.name] || ''}
-                            onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
-                          >
-                            <option value="">Seçin...</option>
-                            {alan.options.map(opt => (
-                              <option key={opt} value={opt}>
-                                {opt === 'ekle' ? 'Ekle (+)' : opt === 'cikar' ? 'Çıkar (-)' : opt}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type={alan.type}
-                            step={alan.step}
-                            className="w-full p-2 border rounded"
-                            value={formData[alan.name] || ''}
-                            onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
-                            max={alan.max}
-                          />
-                        )}
-                        {alan.max !== undefined && <p className="text-xs text-gray-500 mt-1">Maksimum: {alan.max}</p>}
-                      </div>
-                    ))}
-                    
-                    <div className="flex gap-2 mt-6">
-                      <button onClick={handleKaydet} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-                        Kaydet
-                      </button>
-                      <button onClick={() => { setModalAcik(false); setFormData({}); }} 
-                        className="flex-1 bg-gray-300 py-2 rounded hover:bg-gray-400">
-                        İptal
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
+            }
+            
+            if (valid) {
+              islemYap();
+            }
           };
 
           return (
-            <div className="min-h-screen bg-gray-50 p-6">
-              <div className="max-w-7xl mx-auto">
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                  <h1 className="text-3xl font-bold text-gray-800 mb-2">Üretim ve Stok Takip Sistemi</h1>
-                  <p className="text-gray-600">Gerçek zamanlı üretim ve stok yönetimi</p>
+            <div style={{minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px'}}>
+              <div style={{maxWidth: '1280px', margin: '0 auto'}}>
+                <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px'}}>
+                  <h1 style={{fontSize: '30px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px'}}>Üretim ve Stok Takip Sistemi</h1>
+                  <p style={{color: '#6b7280'}}>Gerçek zamanlı üretim ve stok yönetimi</p>
                 </div>
 
-                <div className="flex gap-2 mb-6 flex-wrap">
+                <div style={{display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap'}}>
                   <button
                     onClick={() => setAktifSekme('stok')}
-                    className={`px-6 py-2 rounded-lg font-medium ${
-                      aktifSekme === 'stok' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
-                    }`}
+                    style={{
+                      padding: '8px 24px',
+                      borderRadius: '8px',
+                      fontWeight: '500',
+                      backgroundColor: aktifSekme === 'stok' ? '#2563eb' : 'white',
+                      color: aktifSekme === 'stok' ? 'white' : '#374151'
+                    }}
                   >
                     📊 Stok Durumu
                   </button>
                   <button
                     onClick={() => setAktifSekme('hareketler')}
-                    className={`px-6 py-2 rounded-lg font-medium ${
-                      aktifSekme === 'hareketler' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
-                    }`}
+                    style={{
+                      padding: '8px 24px',
+                      borderRadius: '8px',
+                      fontWeight: '500',
+                      backgroundColor: aktifSekme === 'hareketler' ? '#2563eb' : 'white',
+                      color: aktifSekme === 'hareketler' ? 'white' : '#374151'
+                    }}
                   >
                     📜 Geçmiş Hareketler
                   </button>
                   <button
                     onClick={() => setYeniUrunModalAcik(true)}
-                    className="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '8px 24px',
+                      backgroundColor: '#16a34a',
+                      color: 'white',
+                      borderRadius: '8px',
+                      fontWeight: '500'
+                    }}
                   >
                     ➕ Yeni Ürün Ekle
                   </button>
                 </div>
 
                 {aktifSekme === 'stok' && (
-                  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-100">
+                  <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden'}}>
+                    <div style={{overflowX: 'auto'}}>
+                      <table style={{width: '100%', fontSize: '14px'}}>
+                        <thead style={{backgroundColor: '#f3f4f6'}}>
                           <tr>
-                            <th className="px-3 py-3 text-left">Ürün</th>
-                            <th className="px-3 py-3 text-center bg-yellow-50" colSpan="2">Temizleme Stoğu</th>
-                            <th className="px-3 py-3 text-center bg-blue-50" colSpan="3">Temizlemede</th>
-                            <th className="px-3 py-3 text-center bg-purple-50" colSpan="2">Paketlenecek</th>
-                            <th className="px-3 py-3 text-center bg-green-50" colSpan="2">Paketlendi</th>
-                            <th className="px-3 py-3 text-center text-red-600">Hurda</th>
-                            <th className="px-3 py-3 text-center">İşlemler</th>
+                            <th style={{padding: '12px', textAlign: 'left'}}>Ürün</th>
+                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}} colSpan="2">Temizleme Stoğu</th>
+                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}} colSpan="3">Temizlemede</th>
+                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}} colSpan="2">Paketlenecek</th>
+                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5'}} colSpan="2">Paketlendi</th>
+                            <th style={{padding: '12px', textAlign: 'center', color: '#dc2626'}}>Hurda</th>
+                            <th style={{padding: '12px', textAlign: 'center'}}>İşlemler</th>
                           </tr>
-                          <tr className="text-xs bg-gray-50">
-                            <th className="px-3 py-2"></th>
-                            <th className="px-3 py-2 bg-yellow-50">A</th>
-                            <th className="px-3 py-2 bg-yellow-50">B</th>
-                            <th className="px-3 py-2 bg-blue-50">A</th>
-                            <th className="px-3 py-2 bg-blue-50">B</th>
-                            <th className="px-3 py-2 bg-blue-50">KG</th>
-                            <th className="px-3 py-2 bg-purple-50">A</th>
-                            <th className="px-3 py-2 bg-purple-50">B</th>
-                            <th className="px-3 py-2 bg-green-50">Adet</th>
-                            <th className="px-3 py-2 bg-green-50">Koli</th>
-                            <th className="px-3 py-2"></th>
-                            <th className="px-3 py-2"></th>
+                          <tr style={{fontSize: '12px', backgroundColor: '#f9fafb'}}>
+                            <th style={{padding: '8px'}}></th>
+                            <th style={{padding: '8px', backgroundColor: '#fef3c7'}}>A</th>
+                            <th style={{padding: '8px', backgroundColor: '#fef3c7'}}>B</th>
+                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>A</th>
+                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>B</th>
+                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>KG</th>
+                            <th style={{padding: '8px', backgroundColor: '#e9d5ff'}}>A</th>
+                            <th style={{padding: '8px', backgroundColor: '#e9d5ff'}}>B</th>
+                            <th style={{padding: '8px', backgroundColor: '#d1fae5'}}>Adet</th>
+                            <th style={{padding: '8px', backgroundColor: '#d1fae5'}}>Koli</th>
+                            <th style={{padding: '8px'}}></th>
+                            <th style={{padding: '8px'}}></th>
                           </tr>
                         </thead>
                         <tbody>
                           {urunler.length === 0 ? (
                             <tr>
-                              <td colSpan="12" className="text-center py-8 text-gray-500">
+                              <td colSpan="12" style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
                                 Henüz ürün eklenmemiş. "Yeni Ürün Ekle" butonuna tıklayın.
                               </td>
                             </tr>
@@ -411,51 +395,81 @@
                             urunler.map(urun => {
                               const paketYapilabilir = Math.min(urun.paketlenecekA, urun.paketlenecekB);
                               return (
-                                <tr key={urun.id} className="border-b hover:bg-gray-50">
-                                  <td className="px-3 py-3 font-medium">{urun.ad}</td>
-                                  <td className="px-3 py-3 text-center bg-yellow-50">{urun.temizlemeStokuA}</td>
-                                  <td className="px-3 py-3 text-center bg-yellow-50">{urun.temizlemeStokuB}</td>
-                                  <td className="px-3 py-3 text-center bg-blue-50">{urun.temizlemedekiA}</td>
-                                  <td className="px-3 py-3 text-center bg-blue-50">{urun.temizlemedekiB}</td>
-                                  <td className="px-3 py-3 text-center bg-blue-50">{(urun.temizlemedekiKg || 0).toFixed(2)}</td>
-                                  <td className="px-3 py-3 text-center bg-purple-50">{urun.paketlenecekA}</td>
-                                  <td className="px-3 py-3 text-center bg-purple-50">{urun.paketlenecekB}</td>
-                                  <td className="px-3 py-3 text-center bg-green-50 font-bold">{urun.paketlendi}</td>
-                                  <td className="px-3 py-3 text-center bg-green-50 font-bold">{urun.paketlendiKoli}</td>
-                                  <td className="px-3 py-3 text-center text-red-600 font-medium">{urun.toplamHurda}</td>
-                                  <td className="px-3 py-3">
-                                    <div className="flex flex-col gap-1">
+                                <tr key={urun.id} style={{borderBottom: '1px solid #e5e7eb'}}>
+                                  <td style={{padding: '12px', fontWeight: '500'}}>{urun.ad}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}}>{urun.temizlemeStokuA}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}}>{urun.temizlemeStokuB}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{urun.temizlemedekiA}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{urun.temizlemedekiB}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{(urun.temizlemedekiKg || 0).toFixed(2)}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}}>{urun.paketlenecekA}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}}>{urun.paketlenecekB}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5', fontWeight: 'bold'}}>{urun.paketlendi}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5', fontWeight: 'bold'}}>{urun.paketlendiKoli}</td>
+                                  <td style={{padding: '12px', textAlign: 'center', color: '#dc2626', fontWeight: '500'}}>{urun.toplamHurda}</td>
+                                  <td style={{padding: '12px'}}>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                                       <button 
-                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeStoku'); setModalAcik(true); }}
-                                        className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-200"
+                                        onClick={() => modalAc(urun, 'temizlemeStoku')}
+                                        style={{
+                                          fontSize: '12px',
+                                          backgroundColor: '#fef3c7',
+                                          color: '#92400e',
+                                          padding: '4px 8px',
+                                          borderRadius: '4px'
+                                        }}
                                       >
                                         ✏️ Tem. Stok
                                       </button>
                                       <button 
-                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeyeGonder'); setModalAcik(true); }}
-                                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                                        onClick={() => modalAc(urun, 'temizlemeyeGonder')}
                                         disabled={urun.temizlemeStokuA === 0 && urun.temizlemeStokuB === 0}
+                                        style={{
+                                          fontSize: '12px',
+                                          backgroundColor: '#dbeafe',
+                                          color: '#1e40af',
+                                          padding: '4px 8px',
+                                          borderRadius: '4px'
+                                        }}
                                       >
                                         📤 Gönder
                                       </button>
                                       <button 
-                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeDondu'); setModalAcik(true); }}
-                                        className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200"
+                                        onClick={() => modalAc(urun, 'temizlemeDondu')}
                                         disabled={urun.temizlemedekiA === 0 && urun.temizlemedekiB === 0}
+                                        style={{
+                                          fontSize: '12px',
+                                          backgroundColor: '#e9d5ff',
+                                          color: '#6b21a8',
+                                          padding: '4px 8px',
+                                          borderRadius: '4px'
+                                        }}
                                       >
                                         ✅ Döndü
                                       </button>
                                       <button 
-                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('paketleme'); setModalAcik(true); }}
-                                        className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded hover:bg-orange-200"
+                                        onClick={() => modalAc(urun, 'paketleme')}
                                         disabled={paketYapilabilir === 0}
+                                        style={{
+                                          fontSize: '12px',
+                                          backgroundColor: '#fed7aa',
+                                          color: '#92400e',
+                                          padding: '4px 8px',
+                                          borderRadius: '4px'
+                                        }}
                                       >
                                         📦 Paketleme
                                       </button>
                                       <button 
-                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('sevk'); setModalAcik(true); }}
-                                        className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                        onClick={() => modalAc(urun, 'sevk')}
                                         disabled={urun.paketlendi === 0}
+                                        style={{
+                                          fontSize: '12px',
+                                          backgroundColor: '#d1fae5',
+                                          color: '#065f46',
+                                          padding: '4px 8px',
+                                          borderRadius: '4px'
+                                        }}
                                       >
                                         🚚 Sevk
                                       </button>
@@ -472,40 +486,40 @@
                 )}
 
                 {aktifSekme === 'hareketler' && (
-                  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                    <div className="p-4 bg-gray-50 border-b">
-                      <h2 className="text-xl font-bold">Geçmiş Hareketler</h2>
+                  <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden'}}>
+                    <div style={{padding: '16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb'}}>
+                      <h2 style={{fontSize: '20px', fontWeight: 'bold'}}>Geçmiş Hareketler</h2>
                     </div>
-                    <div className="overflow-x-auto max-h-96">
-                      <table className="w-full">
-                        <thead className="bg-gray-100 sticky top-0">
+                    <div style={{overflowX: 'auto', maxHeight: '400px'}}>
+                      <table style={{width: '100%'}}>
+                        <thead style={{backgroundColor: '#f3f4f6', position: 'sticky', top: 0}}>
                           <tr>
-                            <th className="px-4 py-2 text-left">Tarih</th>
-                            <th className="px-4 py-2 text-left">Ürün</th>
-                            <th className="px-4 py-2 text-left">İşlem</th>
-                            <th className="px-4 py-2 text-left">Detaylar</th>
-                            <th className="px-4 py-2 text-left">Kullanıcı</th>
+                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Tarih</th>
+                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Ürün</th>
+                            <th style={{padding: '8px 16px', textAlign: 'left'}}>İşlem</th>
+                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Detaylar</th>
+                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Kullanıcı</th>
                           </tr>
                         </thead>
                         <tbody>
                           {hareketler.length === 0 ? (
                             <tr>
-                              <td colSpan="5" className="text-center py-8 text-gray-500">
+                              <td colSpan="5" style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
                                 Henüz hareket kaydı yok.
                               </td>
                             </tr>
                           ) : (
                             hareketler.map(hareket => (
-                              <tr key={hareket.id} className="border-b hover:bg-gray-50">
-                                <td className="px-4 py-2 text-sm">{hareket.tarih}</td>
-                                <td className="px-4 py-2 font-medium">{hareket.urunAd}</td>
-                                <td className="px-4 py-2">
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
-                                    {hareket.html                                    {hareket.islem}
+                              <tr key={hareket.id} style={{borderBottom: '1px solid #e5e7eb'}}>
+                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.tarih}</td>
+                                <td style={{padding: '8px 16px', fontWeight: '500'}}>{hareket.urunAd}</td>
+                                <td style={{padding: '8px 16px'}}>
+                                  <span style={{padding: '4px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontSize: '14px'}}>
+                                    {hareket.islem}
                                   </span>
                                 </td>
-                                <td className="px-4 py-2 text-sm">{hareket.detaylar}</td>
-                                <td className="px-4 py-2 text-sm">{hareket.kullanici}</td>
+                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.detaylar}</td>
+                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.kullanici}</td>
                               </tr>
                             ))
                           )}
@@ -515,14 +529,7 @@
                   </div>
                 )}
 
-                <YeniUrunModal />
-                <IslemModal />
-              </div>
-            </div>
-          );
-        };
-
-        ReactDOM.render(<UretimTakipSistemi />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+                {yeniUrunModalAcik && (
+                  <div className="modal-overlay" onClick={() => setYeniUrunModalAcik(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                      <h3 style={{fontSize: '20px', font
