@@ -104,3 +104,425 @@
             switch (islemTipi) {
               case 'temizlemeStoku':
                 const ekleA = data.islem === 'ekle';
+                const adetA = parseInt(data.adetA || 0);
+                const adetB = parseInt(data.adetB || 0);
+                
+                urunGuncelle(urun.id, {
+                  temizlemeStokuA: ekleA ? urun.temizlemeStokuA + adetA : urun.temizlemeStokuA - adetA,
+                  temizlemeStokuB: ekleA ? urun.temizlemeStokuB + adetB : urun.temizlemeStokuB - adetB
+                });
+                hareketEkle(urun.id, 'Temizleme Stoğu Düzenleme', 
+                  `${ekleA ? 'Eklendi' : 'Çıkarıldı'} - A: ${adetA}, B: ${adetB}`, 
+                  data.kullanici);
+                break;
+                
+              case 'temizlemeyeGonder':
+                const gonderilecekA = parseInt(data.adetA || 0);
+                const gonderilecekB = parseInt(data.adetB || 0);
+                const gonderilecekKg = parseFloat(data.kg || 0);
+                
+                urunGuncelle(urun.id, {
+                  temizlemeStokuA: urun.temizlemeStokuA - gonderilecekA,
+                  temizlemeStokuB: urun.temizlemeStokuB - gonderilecekB,
+                  temizlemedekiA: urun.temizlemedekiA + gonderilecekA,
+                  temizlemedekiB: urun.temizlemedekiB + gonderilecekB,
+                  temizlemedekiKg: urun.temizlemedekiKg + gonderilecekKg
+                });
+                hareketEkle(urun.id, 'Temizlemeye Gönderildi', 
+                  `A: ${gonderilecekA}, B: ${gonderilecekB}, ${gonderilecekKg} kg`, 
+                  data.kullanici);
+                break;
+                
+              case 'temizlemeDondu':
+                const donenA = parseInt(data.adetA || 0);
+                const donenB = parseInt(data.adetB || 0);
+                const donenKg = parseFloat(data.kg || 0);
+                
+                urunGuncelle(urun.id, {
+                  temizlemedekiA: urun.temizlemedekiA - donenA,
+                  temizlemedekiB: urun.temizlemedekiB - donenB,
+                  temizlemedekiKg: urun.temizlemedekiKg - donenKg,
+                  paketlenecekA: urun.paketlenecekA + donenA,
+                  paketlenecekB: urun.paketlenecekB + donenB
+                });
+                hareketEkle(urun.id, 'Temizlemeden Döndü', 
+                  `A: ${donenA}, B: ${donenB}, ${donenKg} kg`, 
+                  data.kullanici);
+                break;
+                
+              case 'paketleme':
+                const paketlenenAdet = parseInt(data.adet || 0);
+                const paketlenenKoli = parseInt(data.koli || 0);
+                const hurdaAdet = parseInt(data.hurda || 0);
+                const tekrarTemizlenecek = parseInt(data.tekrarTemizleme || 0);
+                
+                urunGuncelle(urun.id, {
+                  paketlenecekA: urun.paketlenecekA - paketlenenAdet - hurdaAdet - tekrarTemizlenecek,
+                  paketlenecekB: urun.paketlenecekB - paketlenenAdet - hurdaAdet - tekrarTemizlenecek,
+                  paketlendi: urun.paketlendi + paketlenenAdet,
+                  paketlendiKoli: urun.paketlendiKoli + paketlenenKoli,
+                  toplamHurda: urun.toplamHurda + hurdaAdet,
+                  temizlemeStokuA: urun.temizlemeStokuA + tekrarTemizlenecek,
+                  temizlemeStokuB: urun.temizlemeStokuB + tekrarTemizlenecek
+                });
+                hareketEkle(urun.id, 'Paketleme', 
+                  `Paketlenen: ${paketlenenAdet} adet (${paketlenenKoli} koli), Hurda: ${hurdaAdet}, Tekrar Temizleme: ${tekrarTemizlenecek}`, 
+                  data.kullanici);
+                break;
+                
+              case 'sevk':
+                const sevkAdet = parseInt(data.adet || 0);
+                const sevkKoli = parseInt(data.koli || 0);
+                
+                urunGuncelle(urun.id, {
+                  paketlendi: urun.paketlendi - sevkAdet,
+                  paketlendiKoli: urun.paketlendiKoli - sevkKoli
+                });
+                hareketEkle(urun.id, 'Sevk', 
+                  `${sevkAdet} adet (${sevkKoli} koli)`, 
+                  data.kullanici);
+                break;
+            }
+            
+            setModalAcik(false);
+          };
+
+          const YeniUrunModal = () => {
+            if (!yeniUrunModalAcik) return null;
+
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setYeniUrunModalAcik(false)}>
+                <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                  <h3 className="text-xl font-bold mb-4">🆕 Yeni Ürün Ekle</h3>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Ürün Adı</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      value={yeniUrunAdi}
+                      onChange={(e) => setYeniUrunAdi(e.target.value)}
+                      placeholder="Örn: Ürün A, Model X, vb."
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button onClick={yeniUrunEkle} className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700">
+                      Ekle
+                    </button>
+                    <button onClick={() => { setYeniUrunModalAcik(false); setYeniUrunAdi(''); }} 
+                      className="flex-1 bg-gray-300 py-2 rounded hover:bg-gray-400">
+                      İptal
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
+          const IslemModal = () => {
+            const [formData, setFormData] = useState({});
+            
+            const formAlanlari = {
+              temizlemeStoku: [
+                { name: 'islem', label: 'İşlem Tipi', type: 'select', options: ['ekle', 'cikar'] },
+                { name: 'adetA', label: 'A Adeti', type: 'number' },
+                { name: 'adetB', label: 'B Adeti', type: 'number' },
+                { name: 'kullanici', label: 'Kaydeden', type: 'text' }
+              ],
+              temizlemeyeGonder: [
+                { name: 'adetA', label: 'Gönderilen A Adet', type: 'number', max: secilenUrun?.temizlemeStokuA },
+                { name: 'adetB', label: 'Gönderilen B Adet', type: 'number', max: secilenUrun?.temizlemeStokuB },
+                { name: 'kg', label: 'Gönderilen Net KG', type: 'number', step: '0.01' },
+                { name: 'kullanici', label: 'Gönderen', type: 'text' }
+              ],
+              temizlemeDondu: [
+                { name: 'adetA', label: 'Dönen A Adet', type: 'number', max: secilenUrun?.temizlemedekiA },
+                { name: 'adetB', label: 'Dönen B Adet', type: 'number', max: secilenUrun?.temizlemedekiB },
+                { name: 'kg', label: 'Dönen Net KG', type: 'number', step: '0.01' },
+                { name: 'kullanici', label: 'Kaydeden', type: 'text' }
+              ],
+              paketleme: [
+                { name: 'adet', label: 'Paketlenen Adet', type: 'number', 
+                  max: Math.min(secilenUrun?.paketlenecekA || 0, secilenUrun?.paketlenecekB || 0) },
+                { name: 'koli', label: 'Paketlenen Koli Adeti', type: 'number' },
+                { name: 'hurda', label: 'Hurda Adet', type: 'number' },
+                { name: 'tekrarTemizleme', label: 'Tekrar Temizlenecek Adet', type: 'number' },
+                { name: 'kullanici', label: 'Paketleyen', type: 'text' }
+              ],
+              sevk: [
+                { name: 'adet', label: 'Sevk Edilen Ürün Adeti', type: 'number', max: secilenUrun?.paketlendi },
+                { name: 'koli', label: 'Sevk Edilen Koli Adeti', type: 'number', max: secilenUrun?.paketlendiKoli },
+                { name: 'kullanici', label: 'Sevk Eden', type: 'text' }
+              ]
+            };
+
+            const basliklar = {
+              temizlemeStoku: '📝 Temizleme Stoğu Düzenle',
+              temizlemeyeGonder: '🚚 Temizlemeye Gönder',
+              temizlemeDondu: '✅ Temizlemeden Döndü',
+              paketleme: '📦 Paketleme',
+              sevk: '🚛 Sevk'
+            };
+
+            const handleKaydet = () => {
+              const alanlar = formAlanlari[islemTipi];
+              let valid = true;
+              
+              for (let alan of alanlar) {
+                if (!formData[alan.name]) {
+                  alert(`Lütfen ${alan.label} alanını doldurun`);
+                  valid = false;
+                  break;
+                }
+              }
+              
+              if (valid) {
+                islemYap(formData);
+                setFormData({});
+              }
+            };
+
+            if (!modalAcik) return null;
+
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setModalAcik(false)}>
+                <div className="bg-white rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                  <h3 className="text-xl font-bold mb-4">{basliklar[islemTipi]}</h3>
+                  <p className="text-gray-600 mb-4">Ürün: <strong>{secilenUrun?.ad}</strong></p>
+                  
+                  <div>
+                    {formAlanlari[islemTipi]?.map(alan => (
+                      <div key={alan.name} className="mb-4">
+                        <label className="block text-sm font-medium mb-1">{alan.label}</label>
+                        {alan.type === 'select' ? (
+                          <select
+                            className="w-full p-2 border rounded"
+                            value={formData[alan.name] || ''}
+                            onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
+                          >
+                            <option value="">Seçin...</option>
+                            {alan.options.map(opt => (
+                              <option key={opt} value={opt}>
+                                {opt === 'ekle' ? 'Ekle (+)' : opt === 'cikar' ? 'Çıkar (-)' : opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={alan.type}
+                            step={alan.step}
+                            className="w-full p-2 border rounded"
+                            value={formData[alan.name] || ''}
+                            onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
+                            max={alan.max}
+                          />
+                        )}
+                        {alan.max !== undefined && <p className="text-xs text-gray-500 mt-1">Maksimum: {alan.max}</p>}
+                      </div>
+                    ))}
+                    
+                    <div className="flex gap-2 mt-6">
+                      <button onClick={handleKaydet} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                        Kaydet
+                      </button>
+                      <button onClick={() => { setModalAcik(false); setFormData({}); }} 
+                        className="flex-1 bg-gray-300 py-2 rounded hover:bg-gray-400">
+                        İptal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div className="min-h-screen bg-gray-50 p-6">
+              <div className="max-w-7xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">Üretim ve Stok Takip Sistemi</h1>
+                  <p className="text-gray-600">Gerçek zamanlı üretim ve stok yönetimi</p>
+                </div>
+
+                <div className="flex gap-2 mb-6 flex-wrap">
+                  <button
+                    onClick={() => setAktifSekme('stok')}
+                    className={`px-6 py-2 rounded-lg font-medium ${
+                      aktifSekme === 'stok' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    📊 Stok Durumu
+                  </button>
+                  <button
+                    onClick={() => setAktifSekme('hareketler')}
+                    className={`px-6 py-2 rounded-lg font-medium ${
+                      aktifSekme === 'hareketler' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    📜 Geçmiş Hareketler
+                  </button>
+                  <button
+                    onClick={() => setYeniUrunModalAcik(true)}
+                    className="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+                  >
+                    ➕ Yeni Ürün Ekle
+                  </button>
+                </div>
+
+                {aktifSekme === 'stok' && (
+                  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-3 py-3 text-left">Ürün</th>
+                            <th className="px-3 py-3 text-center bg-yellow-50" colSpan="2">Temizleme Stoğu</th>
+                            <th className="px-3 py-3 text-center bg-blue-50" colSpan="3">Temizlemede</th>
+                            <th className="px-3 py-3 text-center bg-purple-50" colSpan="2">Paketlenecek</th>
+                            <th className="px-3 py-3 text-center bg-green-50" colSpan="2">Paketlendi</th>
+                            <th className="px-3 py-3 text-center text-red-600">Hurda</th>
+                            <th className="px-3 py-3 text-center">İşlemler</th>
+                          </tr>
+                          <tr className="text-xs bg-gray-50">
+                            <th className="px-3 py-2"></th>
+                            <th className="px-3 py-2 bg-yellow-50">A</th>
+                            <th className="px-3 py-2 bg-yellow-50">B</th>
+                            <th className="px-3 py-2 bg-blue-50">A</th>
+                            <th className="px-3 py-2 bg-blue-50">B</th>
+                            <th className="px-3 py-2 bg-blue-50">KG</th>
+                            <th className="px-3 py-2 bg-purple-50">A</th>
+                            <th className="px-3 py-2 bg-purple-50">B</th>
+                            <th className="px-3 py-2 bg-green-50">Adet</th>
+                            <th className="px-3 py-2 bg-green-50">Koli</th>
+                            <th className="px-3 py-2"></th>
+                            <th className="px-3 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {urunler.length === 0 ? (
+                            <tr>
+                              <td colSpan="12" className="text-center py-8 text-gray-500">
+                                Henüz ürün eklenmemiş. "Yeni Ürün Ekle" butonuna tıklayın.
+                              </td>
+                            </tr>
+                          ) : (
+                            urunler.map(urun => {
+                              const paketYapilabilir = Math.min(urun.paketlenecekA, urun.paketlenecekB);
+                              return (
+                                <tr key={urun.id} className="border-b hover:bg-gray-50">
+                                  <td className="px-3 py-3 font-medium">{urun.ad}</td>
+                                  <td className="px-3 py-3 text-center bg-yellow-50">{urun.temizlemeStokuA}</td>
+                                  <td className="px-3 py-3 text-center bg-yellow-50">{urun.temizlemeStokuB}</td>
+                                  <td className="px-3 py-3 text-center bg-blue-50">{urun.temizlemedekiA}</td>
+                                  <td className="px-3 py-3 text-center bg-blue-50">{urun.temizlemedekiB}</td>
+                                  <td className="px-3 py-3 text-center bg-blue-50">{(urun.temizlemedekiKg || 0).toFixed(2)}</td>
+                                  <td className="px-3 py-3 text-center bg-purple-50">{urun.paketlenecekA}</td>
+                                  <td className="px-3 py-3 text-center bg-purple-50">{urun.paketlenecekB}</td>
+                                  <td className="px-3 py-3 text-center bg-green-50 font-bold">{urun.paketlendi}</td>
+                                  <td className="px-3 py-3 text-center bg-green-50 font-bold">{urun.paketlendiKoli}</td>
+                                  <td className="px-3 py-3 text-center text-red-600 font-medium">{urun.toplamHurda}</td>
+                                  <td className="px-3 py-3">
+                                    <div className="flex flex-col gap-1">
+                                      <button 
+                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeStoku'); setModalAcik(true); }}
+                                        className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-200"
+                                      >
+                                        ✏️ Tem. Stok
+                                      </button>
+                                      <button 
+                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeyeGonder'); setModalAcik(true); }}
+                                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                                        disabled={urun.temizlemeStokuA === 0 && urun.temizlemeStokuB === 0}
+                                      >
+                                        📤 Gönder
+                                      </button>
+                                      <button 
+                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('temizlemeDondu'); setModalAcik(true); }}
+                                        className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200"
+                                        disabled={urun.temizlemedekiA === 0 && urun.temizlemedekiB === 0}
+                                      >
+                                        ✅ Döndü
+                                      </button>
+                                      <button 
+                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('paketleme'); setModalAcik(true); }}
+                                        className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded hover:bg-orange-200"
+                                        disabled={paketYapilabilir === 0}
+                                      >
+                                        📦 Paketleme
+                                      </button>
+                                      <button 
+                                        onClick={() => { setSecilenUrun(urun); setIslemTipi('sevk'); setModalAcik(true); }}
+                                        className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                        disabled={urun.paketlendi === 0}
+                                      >
+                                        🚚 Sevk
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {aktifSekme === 'hareketler' && (
+                  <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b">
+                      <h2 className="text-xl font-bold">Geçmiş Hareketler</h2>
+                    </div>
+                    <div className="overflow-x-auto max-h-96">
+                      <table className="w-full">
+                        <thead className="bg-gray-100 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-2 text-left">Tarih</th>
+                            <th className="px-4 py-2 text-left">Ürün</th>
+                            <th className="px-4 py-2 text-left">İşlem</th>
+                            <th className="px-4 py-2 text-left">Detaylar</th>
+                            <th className="px-4 py-2 text-left">Kullanıcı</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {hareketler.length === 0 ? (
+                            <tr>
+                              <td colSpan="5" className="text-center py-8 text-gray-500">
+                                Henüz hareket kaydı yok.
+                              </td>
+                            </tr>
+                          ) : (
+                            hareketler.map(hareket => (
+                              <tr key={hareket.id} className="border-b hover:bg-gray-50">
+                                <td className="px-4 py-2 text-sm">{hareket.tarih}</td>
+                                <td className="px-4 py-2 font-medium">{hareket.urunAd}</td>
+                                <td className="px-4 py-2">
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+                                    {hareket.html                                    {hareket.islem}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-sm">{hareket.detaylar}</td>
+                                <td className="px-4 py-2 text-sm">{hareket.kullanici}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <YeniUrunModal />
+                <IslemModal />
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<UretimTakipSistemi />, document.getElementById('root'));
+    </script>
+</body>
+</html>
