@@ -532,4 +532,123 @@
                 {yeniUrunModalAcik && (
                   <div className="modal-overlay" onClick={() => setYeniUrunModalAcik(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                      <h3 style={{fontSize: '20px', font
+                      <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '16px'}}>🆕 Yeni Ürün Ekle</h3>
+                      
+                      <div style={{marginBottom: '16px'}}>
+                        <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>Ürün Adı</label>
+                        <input
+                          type="text"
+                          style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
+                          value={yeniUrunAdi}
+                          onChange={(e) => setYeniUrunAdi(e.target.value)}
+                          placeholder="Örn: Ürün A, Model X, vb."
+                          autoFocus
+                        />
+                      </div>
+                      
+                      <div style={{display: 'flex', gap: '8px'}}>
+                        <button 
+                          onClick={yeniUrunEkle} 
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#16a34a',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          Ekle
+                        </button>
+                        <button 
+                          onClick={() => { setYeniUrunModalAcik(false); setYeniUrunAdi(''); }} 
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#d1d5db',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {modalAcik && (
+                  <div className="modal-overlay" onClick={() => setModalAcik(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                      <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '8px'}}>{basliklar[islemTipi]}</h3>
+                      <p style={{color: '#6b7280', marginBottom: '16px'}}>Ürün: <strong>{secilenUrun?.ad}</strong></p>
+                      
+                      <div>
+                        {formAlanlari[islemTipi] && formAlanlari[islemTipi].map(alan => (
+                          <div key={alan.name} style={{marginBottom: '16px'}}>
+                            <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>{alan.label}</label>
+                            {alan.type === 'select' ? (
+                              <select
+                                style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
+                                value={formData[alan.name] || ''}
+                                onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
+                              >
+                                <option value="">Seçin...</option>
+                                {alan.options.map(opt => (
+                                  <option key={opt} value={opt}>
+                                    {opt === 'ekle' ? 'Ekle (+)' : opt === 'cikar' ? 'Çıkar (-)' : opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type={alan.type}
+                                step={alan.step}
+                                style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
+                                value={formData[alan.name] || ''}
+                                onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
+                                max={alan.max}
+                              />
+                            )}
+                            {alan.max !== undefined && <p style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>Maksimum: {alan.max}</p>}
+                          </div>
+                        ))}
+                        
+                        <div style={{display: 'flex', gap: '8px', marginTop: '24px'}}>
+                          <button 
+                            onClick={handleKaydet} 
+                            style={{
+                              flex: 1,
+                              backgroundColor: '#2563eb',
+                              color: 'white',
+                              padding: '8px',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            Kaydet
+                          </button>
+                          <button 
+                            onClick={() => { setModalAcik(false); setFormData({}); }} 
+                            style={{
+                              flex: 1,
+                              backgroundColor: '#d1d5db',
+                              padding: '8px',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            İptal
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<UretimTakipSistemi />);
+    </script>
+</body>
+</html>
