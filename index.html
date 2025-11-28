@@ -1,654 +1,495 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Üretim ve Stok Takip Sistemi</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        }
-        button {
-            cursor: pointer;
-            border: none;
-            outline: none;
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        input, select {
-            outline: none;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-        .modal-content {
-            background: white;
-            border-radius: 8px;
-            padding: 24px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+import React, { useState, useEffect } from 'react';
+import { Plus, Minus, Edit2, Save, X, Package, Box, Layers, Circle, AlertCircle, Search, Download, Upload } from 'lucide-react';
+
+const InventoryManagement = () => {
+  const [activeTab, setActiveTab] = useState('izolasyon');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingItem, setEditingItem] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState({ type: '', item: null, amount: 0, reason: '' });
+  
+  const initialData = {
+    izolasyon: [
+      { id: 'iz1', name: 'FOG-B335A (A)', stock: -2005 },
+      { id: 'iz2', name: 'FOG-B335A (B) - FOG-B506A (B)', stock: -1874 },
+      { id: 'iz3', name: 'FOG-B730A (B)', stock: 36 },
+      { id: 'iz4', name: 'FOG-B1350 (A)', stock: 50 },
+      { id: 'iz5', name: 'FOG-B1350A (B)', stock: 69 },
+      { id: 'iz6', name: 'HZG20B (B) - HZG30B (D)', stock: 26 },
+      { id: 'iz7', name: 'HZG20B (A) - HZG30B (B)', stock: 22 },
+      { id: 'iz8', name: 'HZG30B (A)', stock: 10 },
+      { id: 'iz9', name: 'HZG30B (C) - FQ-01B/A (A)', stock: 37 },
+      { id: 'iz10', name: 'FQ-01B/A-B', stock: 126 },
+      { id: 'iz11', name: 'KHRQ22M20T (A)', stock: 484 },
+      { id: 'iz12', name: 'KHRQ22M20T (B)', stock: 610 },
+      { id: 'iz13', name: 'MXJ-YA1509M/R1 (A) - MXJ-YA1500M', stock: -17012 },
+      { id: 'iz14', name: 'MXJ-YA1509M/R1 (B) - MXJ-YA2812M (B) - MXJ-YA2815M (B) - MXJ-YA3419M (B)', stock: -18293 },
+      { id: 'iz15', name: 'MXJ-YA2812M (A) - MXJ-YA2815M (A)', stock: 1535 },
+      { id: 'iz16', name: 'MXJ-YA3419M (A) - MXJ-YA4119M (A)', stock: 800 },
+      { id: 'iz17', name: 'MXJ-YA4119M (B)', stock: 300 },
+      { id: 'iz18', name: 'FOG-B335A/Y (A)', stock: 358 },
+      { id: 'iz19', name: 'FOG-B335A/Y (B)', stock: 367 },
+      { id: 'iz20', name: 'MXJ-YA2512M/R3 (B)', stock: -20863 },
+      { id: 'iz21', name: 'MXJ-YA2512M/R3 (A)', stock: -20916 },
+      { id: 'iz22', name: 'FOG-B506A/Y (A) - FOG-B730A (B)', stock: -69 },
+      { id: 'iz23', name: 'FOG-B506A/Y (B)', stock: 61 },
+      { id: 'iz24', name: 'FOG-B506A (A) - FOG-B730A (A)', stock: 1500 },
+      { id: 'iz25', name: 'X', stock: 149 },
+      { id: 'iz26', name: 'FOG-B730A/Y (A)', stock: 0 },
+      { id: 'iz27', name: 'FOG-B730A/Y (B)', stock: 0 },
+      { id: 'iz28', name: 'CMY-Y102SS-TR (A)', stock: -186 },
+      { id: 'iz29', name: 'CMY-Y102SS-TR (B)', stock: -186 },
+      { id: 'iz30', name: 'CMY-Y102SS-TR (A1)', stock: 3500 },
+      { id: 'iz31', name: 'CMY-Y102SS-TR (B1)', stock: 2000 },
+      { id: 'iz32', name: 'CMY-202S', stock: 1500 }
+    ],
+    koli: [
+      { id: 'k1', name: 'B8 - 65.5*38*41', stock: 129 },
+      { id: 'k2', name: 'B6 - 59.5*41.5*30', stock: 380 },
+      { id: 'k3', name: 'B5 - 61*28*40', stock: 400 },
+      { id: 'k4', name: 'B4 - 68.5*36*35', stock: 267 },
+      { id: 'k5', name: 'B3 - 68.5*45.5*32', stock: -1024 },
+      { id: 'k6', name: 'B2 - 56.5*34.4*38.2', stock: -1933 },
+      { id: 'k7', name: 'B1 - 70*46*28', stock: 780 },
+      { id: 'k8', name: 'B9 - 72*36*38', stock: -42 },
+      { id: 'k9', name: 'B7 (Fittings) - 38.5x26.5x22', stock: 283 }
+    ],
+    kutu: [
+      { id: 'kt1', name: 'K1 - 45*13.5*3.5', stock: 670 },
+      { id: 'kt2', name: 'K2 - 45*13.5*6', stock: 650 },
+      { id: 'kt3', name: 'K3 - 55.5*16.5*3.5', stock: 712 },
+      { id: 'kt4', name: 'K4 - 45*17*6', stock: -26000 },
+      { id: 'kt5', name: 'K5 - 35*22*6.5', stock: 50 },
+      { id: 'kt6', name: 'K6 - 60*27*7.5', stock: 400 },
+      { id: 'kt7', name: 'K7 - 55.5*16.5*7.2', stock: -19819 },
+      { id: 'kt8', name: 'K8 - 58*20*9', stock: 450 },
+      { id: 'kt9', name: 'K9 - 63.5 × 17.5 × 7', stock: 35 },
+      { id: 'kt10', name: 'K10 - 63.5*17.5*4.5', stock: 813 },
+      { id: 'kt11', name: 'K11 - 35*11.5*5', stock: -1750 }
+    ],
+    tapa: [
+      { id: 't1', name: '8x15 - Çin - Kırmızı', stock: 70168 },
+      { id: 't2', name: '9x15 Çin - Kırmızı', stock: 41746 },
+      { id: 't3', name: '10x20 - Çin - Kırmızı', stock: 11000 },
+      { id: 't4', name: '11x15 - Çin - Kırmızı', stock: 81893 },
+      { id: 't5', name: '12x15 - Çin - Kırmızı', stock: 295710 },
+      { id: 't6', name: '14x15 - Çin - Kırmızı', stock: 71783 },
+      { id: 't7', name: '16x15 - Çin - Kırmızı', stock: 175310 },
+      { id: 't8', name: '18x15 - Çin - Kırmızı', stock: 347704 },
+      { id: 't9', name: '19x20 - Çin - Kırmızı', stock: 49864 },
+      { id: 't10', name: '21x20 - Çin - Kırmızı', stock: 10246 },
+      { id: 't11', name: '22x20 - Çin - Kırmızı', stock: 4830 },
+      { id: 't12', name: '23x20 - Çin - Kırmızı', stock: 5800 },
+      { id: 't13', name: '25x20 - Çin - Kırmızı', stock: 5700 },
+      { id: 't14', name: '31x25 - Çin - Kırmızı', stock: 12630 },
+      { id: 't15', name: '38x30 - Çin - Kırmızı', stock: 2215 },
+      { id: 't16', name: '45x30 - Çin - Kırmızı', stock: 5740 },
+      { id: 't17', name: '57x40 - Çin - Kırmızı', stock: 2310 },
+      { id: 't18', name: '7x15 - Türk - Kırmızı', stock: 13500 },
+      { id: 't19', name: '8x15 - Türk - Kırmızı', stock: 1000 },
+      { id: 't20', name: '12x15 - Türk - Kırmızı', stock: 1000 },
+      { id: 't21', name: '15x15 - Türk - Kırmızı', stock: 3600 },
+      { id: 't22', name: '18x15 - Türk - Kırmızı', stock: 2000 },
+      { id: 't23', name: '22x20 - Türk - Kırmızı', stock: 3500 },
+      { id: 't24', name: '31x25 - Türk - Kırmızı', stock: 3000 },
+      { id: 't25', name: '11x15 - Türk - Sarı', stock: 350 },
+      { id: 't26', name: '14x15 - Türk - Sarı', stock: 4000 },
+      { id: 't27', name: '18x15 - Türk - Sarı', stock: 1000 },
+      { id: 't28', name: '11x15 - Türk - Siyah', stock: 700 }
+    ]
+  };
+
+  const [inventory, setInventory] = useState(() => {
+    const saved = localStorage.getItem('inventoryData');
+    return saved ? JSON.parse(saved) : initialData;
+  });
+
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('inventoryHistory');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('inventoryData', JSON.stringify(inventory));
+  }, [inventory]);
+
+  useEffect(() => {
+    localStorage.setItem('inventoryHistory', JSON.stringify(history));
+  }, [history]);
+
+  const handleStockChange = (type, itemId, change) => {
+    const item = inventory[type].find(i => i.id === itemId);
+    setModalData({ type, item, amount: Math.abs(change), reason: '', action: change > 0 ? 'add' : 'remove' });
+    setShowModal(true);
+  };
+
+  const confirmStockChange = () => {
+    if (!modalData.reason.trim()) {
+      alert('Lütfen sebep giriniz!');
+      return;
+    }
+
+    const change = modalData.action === 'add' ? modalData.amount : -modalData.amount;
     
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    setInventory(prev => ({
+      ...prev,
+      [modalData.type]: prev[modalData.type].map(item =>
+        item.id === modalData.item.id
+          ? { ...item, stock: item.stock + change }
+          : item
+      )
+    }));
 
-        function UretimTakipSistemi() {
-          const [urunler, setUrunler] = useState([]);
-          const [hareketler, setHareketler] = useState([]);
-          const [aktifSekme, setAktifSekme] = useState('stok');
-          const [modalAcik, setModalAcik] = useState(false);
-          const [islemTipi, setIslemTipi] = useState('');
-          const [secilenUrun, setSecilenUrun] = useState(null);
-          const [yeniUrunModalAcik, setYeniUrunModalAcik] = useState(false);
-          const [yeniUrunAdi, setYeniUrunAdi] = useState('');
-          const [formData, setFormData] = useState({});
+    const historyEntry = {
+      id: Date.now(),
+      date: new Date().toLocaleString('tr-TR'),
+      category: modalData.type,
+      itemName: modalData.item.name,
+      action: modalData.action === 'add' ? 'Eklendi' : 'Çıkarıldı',
+      amount: modalData.amount,
+      reason: modalData.reason,
+      newStock: modalData.item.stock + change
+    };
 
-          useEffect(() => {
-            try {
-              const kaydedilmisUrunler = localStorage.getItem('urunler');
-              const kaydedilmisHareketler = localStorage.getItem('hareketler');
-              
-              if (kaydedilmisUrunler) {
-                setUrunler(JSON.parse(kaydedilmisUrunler));
-              }
-              if (kaydedilmisHareketler) {
-                setHareketler(JSON.parse(kaydedilmisHareketler));
-              }
-            } catch (e) {
-              console.error('Veri yükleme hatası:', e);
-            }
-          }, []);
+    setHistory(prev => [historyEntry, ...prev]);
+    setShowModal(false);
+    setModalData({ type: '', item: null, amount: 0, reason: '' });
+  };
 
-          useEffect(() => {
-            if (urunler.length > 0) {
-              try {
-                localStorage.setItem('urunler', JSON.stringify(urunler));
-              } catch (e) {
-                console.error('Veri kaydetme hatası:', e);
-              }
-            }
-          }, [urunler]);
+  const handleEdit = (type, item) => {
+    setEditingItem({ ...item, type });
+  };
 
-          useEffect(() => {
-            if (hareketler.length > 0) {
-              try {
-                localStorage.setItem('hareketler', JSON.stringify(hareketler));
-              } catch (e) {
-                console.error('Veri kaydetme hatası:', e);
-              }
-            }
-          }, [hareketler]);
+  const saveEdit = () => {
+    setInventory(prev => ({
+      ...prev,
+      [editingItem.type]: prev[editingItem.type].map(item =>
+        item.id === editingItem.id
+          ? { ...item, name: editingItem.name, stock: editingItem.stock }
+          : item
+      )
+    }));
+    setEditingItem(null);
+  };
 
-          const yeniUrunEkle = () => {
-            if (!yeniUrunAdi.trim()) {
-              alert('Lütfen ürün adı girin');
-              return;
-            }
-            const yeniUrun = {
-              id: Date.now(),
-              ad: yeniUrunAdi,
-              temizlemeStokuA: 0,
-              temizlemeStokuB: 0,
-              temizlemedekiA: 0,
-              temizlemedekiB: 0,
-              temizlemedekiKg: 0,
-              paketlenecekA: 0,
-              paketlenecekB: 0,
-              paketlendi: 0,
-              paketlendiKoli: 0,
-              toplamHurda: 0
-            };
-            setUrunler([...urunler, yeniUrun]);
-            setYeniUrunModalAcik(false);
-            setYeniUrunAdi('');
-          };
+  const filteredItems = inventory[activeTab].filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-          const hareketEkle = (urunId, islem, detaylar, kullanici) => {
-            const urun = urunler.find(u => u.id === urunId);
-            const hareket = {
-              id: Date.now(),
-              tarih: new Date().toLocaleString('tr-TR'),
-              urunId: urunId,
-              urunAd: urun ? urun.ad : '',
-              islem: islem,
-              detaylar: detaylar,
-              kullanici: kullanici || 'Sistem'
-            };
-            setHareketler([hareket, ...hareketler]);
-          };
+  const getStockColor = (stock) => {
+    if (stock < 0) return 'text-red-600 bg-red-50';
+    if (stock < 100) return 'text-orange-600 bg-orange-50';
+    return 'text-green-600 bg-green-50';
+  };
 
-          const urunGuncelle = (urunId, guncellemeler) => {
-            setUrunler(urunler.map(urun => {
-              if (urun.id === urunId) {
-                return { ...urun, ...guncellemeler };
-              }
-              return urun;
-            }));
-          };
+  const categoryIcons = {
+    izolasyon: Layers,
+    koli: Box,
+    kutu: Package,
+    tapa: Circle
+  };
 
-          const islemYap = () => {
-            const urun = secilenUrun;
-            if (!urun) return;
-            
-            if (islemTipi === 'temizlemeStoku') {
-                const ekleA = formData.islem === 'ekle';
-                const adetA = parseInt(formData.adetA || 0);
-                const adetB = parseInt(formData.adetB || 0);
-                
-                urunGuncelle(urun.id, {
-                  temizlemeStokuA: ekleA ? urun.temizlemeStokuA + adetA : urun.temizlemeStokuA - adetA,
-                  temizlemeStokuB: ekleA ? urun.temizlemeStokuB + adetB : urun.temizlemeStokuB - adetB
-                });
-                hareketEkle(urun.id, 'Temizleme Stoğu Düzenleme', 
-                  (ekleA ? 'Eklendi' : 'Çıkarıldı') + ' - A: ' + adetA + ', B: ' + adetB, 
-                  formData.kullanici);
-            }
-            
-            if (islemTipi === 'temizlemeyeGonder') {
-                const gonderilecekA = parseInt(formData.adetA || 0);
-                const gonderilecekB = parseInt(formData.adetB || 0);
-                const gonderilecekKg = parseFloat(formData.kg || 0);
-                
-                urunGuncelle(urun.id, {
-                  temizlemeStokuA: urun.temizlemeStokuA - gonderilecekA,
-                  temizlemeStokuB: urun.temizlemeStokuB - gonderilecekB,
-                  temizlemedekiA: urun.temizlemedekiA + gonderilecekA,
-                  temizlemedekiB: urun.temizlemedekiB + gonderilecekB,
-                  temizlemedekiKg: urun.temizlemedekiKg + gonderilecekKg
-                });
-                hareketEkle(urun.id, 'Temizlemeye Gönderildi', 
-                  'A: ' + gonderilecekA + ', B: ' + gonderilecekB + ', ' + gonderilecekKg + ' kg', 
-                  formData.kullanici);
-            }
-            
-            if (islemTipi === 'temizlemeDondu') {
-                const donenA = parseInt(formData.adetA || 0);
-                const donenB = parseInt(formData.adetB || 0);
-                const donenKg = parseFloat(formData.kg || 0);
-                
-                urunGuncelle(urun.id, {
-                  temizlemedekiA: urun.temizlemedekiA - donenA,
-                  temizlemedekiB: urun.temizlemedekiB - donenB,
-                  temizlemedekiKg: urun.temizlemedekiKg - donenKg,
-                  paketlenecekA: urun.paketlenecekA + donenA,
-                  paketlenecekB: urun.paketlenecekB + donenB
-                });
-                hareketEkle(urun.id, 'Temizlemeden Döndü', 
-                  'A: ' + donenA + ', B: ' + donenB + ', ' + donenKg + ' kg', 
-                  formData.kullanici);
-            }
-            
-            if (islemTipi === 'paketleme') {
-                const paketlenenAdet = parseInt(formData.adet || 0);
-                const paketlenenKoli = parseInt(formData.koli || 0);
-                const hurdaAdet = parseInt(formData.hurda || 0);
-                const tekrarTemizlenecek = parseInt(formData.tekrarTemizleme || 0);
-                
-                urunGuncelle(urun.id, {
-                  paketlenecekA: urun.paketlenecekA - paketlenenAdet - hurdaAdet - tekrarTemizlenecek,
-                  paketlenecekB: urun.paketlenecekB - paketlenenAdet - hurdaAdet - tekrarTemizlenecek,
-                  paketlendi: urun.paketlendi + paketlenenAdet,
-                  paketlendiKoli: urun.paketlendiKoli + paketlenenKoli,
-                  toplamHurda: urun.toplamHurda + hurdaAdet,
-                  temizlemeStokuA: urun.temizlemeStokuA + tekrarTemizlenecek,
-                  temizlemeStokuB: urun.temizlemeStokuB + tekrarTemizlenecek
-                });
-                hareketEkle(urun.id, 'Paketleme', 
-                  'Paketlenen: ' + paketlenenAdet + ' adet (' + paketlenenKoli + ' koli), Hurda: ' + hurdaAdet + ', Tekrar Temizleme: ' + tekrarTemizlenecek, 
-                  formData.kullanici);
-            }
-            
-            if (islemTipi === 'sevk') {
-                const sevkAdet = parseInt(formData.adet || 0);
-                const sevkKoli = parseInt(formData.koli || 0);
-                
-                urunGuncelle(urun.id, {
-                  paketlendi: urun.paketlendi - sevkAdet,
-                  paketlendiKoli: urun.paketlendiKoli - sevkKoli
-                });
-                hareketEkle(urun.id, 'Sevk', 
-                  sevkAdet + ' adet (' + sevkKoli + ' koli)', 
-                  formData.kullanici);
-            }
-            
-            setModalAcik(false);
-            setFormData({});
-          };
+  const categoryNames = {
+    izolasyon: 'İzolasyon',
+    koli: 'Koli',
+    kutu: 'Kutu',
+    tapa: 'Tapa'
+  };
 
-          const modalAc = (urun, tip) => {
-            setSecilenUrun(urun);
-            setIslemTipi(tip);
-            setFormData({});
-            setModalAcik(true);
-          };
+  const exportData = () => {
+    const dataStr = JSON.stringify({ inventory, history }, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `envanter-yedek-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+  };
 
-          const formAlanlari = {
-            temizlemeStoku: [
-              { name: 'islem', label: 'İşlem Tipi', type: 'select', options: ['ekle', 'cikar'] },
-              { name: 'adetA', label: 'A Adeti', type: 'number' },
-              { name: 'adetB', label: 'B Adeti', type: 'number' },
-              { name: 'kullanici', label: 'Kaydeden', type: 'text' }
-            ],
-            temizlemeyeGonder: [
-              { name: 'adetA', label: 'Gönderilen A Adet', type: 'number', max: secilenUrun?.temizlemeStokuA },
-              { name: 'adetB', label: 'Gönderilen B Adet', type: 'number', max: secilenUrun?.temizlemeStokuB },
-              { name: 'kg', label: 'Gönderilen Net KG', type: 'number', step: '0.01' },
-              { name: 'kullanici', label: 'Gönderen', type: 'text' }
-            ],
-            temizlemeDondu: [
-              { name: 'adetA', label: 'Dönen A Adet', type: 'number', max: secilenUrun?.temizlemedekiA },
-              { name: 'adetB', label: 'Dönen B Adet', type: 'number', max: secilenUrun?.temizlemedekiB },
-              { name: 'kg', label: 'Dönen Net KG', type: 'number', step: '0.01' },
-              { name: 'kullanici', label: 'Kaydeden', type: 'text' }
-            ],
-            paketleme: [
-              { name: 'adet', label: 'Paketlenen Adet', type: 'number', max: Math.min(secilenUrun?.paketlenecekA || 0, secilenUrun?.paketlenecekB || 0) },
-              { name: 'koli', label: 'Paketlenen Koli Adeti', type: 'number' },
-              { name: 'hurda', label: 'Hurda Adet', type: 'number' },
-              { name: 'tekrarTemizleme', label: 'Tekrar Temizlenecek Adet', type: 'number' },
-              { name: 'kullanici', label: 'Paketleyen', type: 'text' }
-            ],
-            sevk: [
-              { name: 'adet', label: 'Sevk Edilen Ürün Adeti', type: 'number', max: secilenUrun?.paketlendi },
-              { name: 'koli', label: 'Sevk Edilen Koli Adeti', type: 'number', max: secilenUrun?.paketlendiKoli },
-              { name: 'kullanici', label: 'Sevk Eden', type: 'text' }
-            ]
-          };
+  const importData = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.inventory && data.history) {
+            setInventory(data.inventory);
+            setHistory(data.history);
+            alert('Veriler başarıyla yüklendi!');
+          }
+        } catch (error) {
+          alert('Dosya formatı hatalı!');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
 
-          const basliklar = {
-            temizlemeStoku: '📝 Temizleme Stoğu Düzenle',
-            temizlemeyeGonder: '🚚 Temizlemeye Gönder',
-            temizlemeDondu: '✅ Temizlemeden Döndü',
-            paketleme: '📦 Paketleme',
-            sevk: '🚛 Sevk'
-          };
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <Package className="text-blue-600" size={36} />
+              Envanter Takip Sistemi
+            </h1>
+            <div className="flex gap-2">
+              <button
+                onClick={exportData}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Download size={20} />
+                Dışa Aktar
+              </button>
+              <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer">
+                <Upload size={20} />
+                İçe Aktar
+                <input type="file" accept=".json" onChange={importData} className="hidden" />
+              </label>
+            </div>
+          </div>
+          
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Ürün ara..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
 
-          const handleKaydet = () => {
-            const alanlar = formAlanlari[islemTipi];
-            let valid = true;
-            
-            for (let i = 0; i < alanlar.length; i++) {
-              const alan = alanlar[i];
-              if (!formData[alan.name]) {
-                alert('Lütfen ' + alan.label + ' alanını doldurun');
-                valid = false;
-                break;
-              }
-            }
-            
-            if (valid) {
-              islemYap();
-            }
-          };
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-lg mb-6 p-2">
+          <div className="flex gap-2">
+            {Object.keys(inventory).map(category => {
+              const Icon = categoryIcons[category];
+              return (
+                <button
+                  key={category}
+                  onClick={() => setActiveTab(category)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-semibold transition ${
+                    activeTab === category
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {categoryNames[category]}
+                  <span className="ml-2 px-2 py-1 rounded-full text-xs bg-white bg-opacity-20">
+                    {inventory[category].length}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-          return (
-            <div style={{minHeight: '100vh', backgroundColor: '#f9fafb', padding: '24px'}}>
-              <div style={{maxWidth: '1280px', margin: '0 auto'}}>
-                <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px', marginBottom: '24px'}}>
-                  <h1 style={{fontSize: '30px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px'}}>Üretim ve Stok Takip Sistemi</h1>
-                  <p style={{color: '#6b7280'}}>Gerçek zamanlı üretim ve stok yönetimi</p>
+        {/* Inventory Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {filteredItems.map(item => (
+            <div key={item.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition p-4">
+              {editingItem?.id === item.id ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editingItem.name}
+                    onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="number"
+                    value={editingItem.stock}
+                    onChange={(e) => setEditingItem({ ...editingItem, stock: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEdit}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      <Save size={16} />
+                      Kaydet
+                    </button>
+                    <button
+                      onClick={() => setEditingItem(null)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                    >
+                      <X size={16} />
+                      İptal
+                    </button>
+                  </div>
                 </div>
-
-                <div style={{display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap'}}>
-                  <button
-                    onClick={() => setAktifSekme('stok')}
-                    style={{
-                      padding: '8px 24px',
-                      borderRadius: '8px',
-                      fontWeight: '500',
-                      backgroundColor: aktifSekme === 'stok' ? '#2563eb' : 'white',
-                      color: aktifSekme === 'stok' ? 'white' : '#374151'
-                    }}
-                  >
-                    📊 Stok Durumu
-                  </button>
-                  <button
-                    onClick={() => setAktifSekme('hareketler')}
-                    style={{
-                      padding: '8px 24px',
-                      borderRadius: '8px',
-                      fontWeight: '500',
-                      backgroundColor: aktifSekme === 'hareketler' ? '#2563eb' : 'white',
-                      color: aktifSekme === 'hareketler' ? 'white' : '#374151'
-                    }}
-                  >
-                    📜 Geçmiş Hareketler
-                  </button>
-                  <button
-                    onClick={() => setYeniUrunModalAcik(true)}
-                    style={{
-                      marginLeft: 'auto',
-                      padding: '8px 24px',
-                      backgroundColor: '#16a34a',
-                      color: 'white',
-                      borderRadius: '8px',
-                      fontWeight: '500'
-                    }}
-                  >
-                    ➕ Yeni Ürün Ekle
-                  </button>
-                </div>
-
-                {aktifSekme === 'stok' && (
-                  <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden'}}>
-                    <div style={{overflowX: 'auto'}}>
-                      <table style={{width: '100%', fontSize: '14px'}}>
-                        <thead style={{backgroundColor: '#f3f4f6'}}>
-                          <tr>
-                            <th style={{padding: '12px', textAlign: 'left'}}>Ürün</th>
-                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}} colSpan="2">Temizleme Stoğu</th>
-                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}} colSpan="3">Temizlemede</th>
-                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}} colSpan="2">Paketlenecek</th>
-                            <th style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5'}} colSpan="2">Paketlendi</th>
-                            <th style={{padding: '12px', textAlign: 'center', color: '#dc2626'}}>Hurda</th>
-                            <th style={{padding: '12px', textAlign: 'center'}}>İşlemler</th>
-                          </tr>
-                          <tr style={{fontSize: '12px', backgroundColor: '#f9fafb'}}>
-                            <th style={{padding: '8px'}}></th>
-                            <th style={{padding: '8px', backgroundColor: '#fef3c7'}}>A</th>
-                            <th style={{padding: '8px', backgroundColor: '#fef3c7'}}>B</th>
-                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>A</th>
-                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>B</th>
-                            <th style={{padding: '8px', backgroundColor: '#dbeafe'}}>KG</th>
-                            <th style={{padding: '8px', backgroundColor: '#e9d5ff'}}>A</th>
-                            <th style={{padding: '8px', backgroundColor: '#e9d5ff'}}>B</th>
-                            <th style={{padding: '8px', backgroundColor: '#d1fae5'}}>Adet</th>
-                            <th style={{padding: '8px', backgroundColor: '#d1fae5'}}>Koli</th>
-                            <th style={{padding: '8px'}}></th>
-                            <th style={{padding: '8px'}}></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {urunler.length === 0 ? (
-                            <tr>
-                              <td colSpan="12" style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
-                                Henüz ürün eklenmemiş. "Yeni Ürün Ekle" butonuna tıklayın.
-                              </td>
-                            </tr>
-                          ) : (
-                            urunler.map(urun => {
-                              const paketYapilabilir = Math.min(urun.paketlenecekA, urun.paketlenecekB);
-                              return (
-                                <tr key={urun.id} style={{borderBottom: '1px solid #e5e7eb'}}>
-                                  <td style={{padding: '12px', fontWeight: '500'}}>{urun.ad}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}}>{urun.temizlemeStokuA}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#fef3c7'}}>{urun.temizlemeStokuB}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{urun.temizlemedekiA}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{urun.temizlemedekiB}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#dbeafe'}}>{(urun.temizlemedekiKg || 0).toFixed(2)}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}}>{urun.paketlenecekA}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#e9d5ff'}}>{urun.paketlenecekB}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5', fontWeight: 'bold'}}>{urun.paketlendi}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', backgroundColor: '#d1fae5', fontWeight: 'bold'}}>{urun.paketlendiKoli}</td>
-                                  <td style={{padding: '12px', textAlign: 'center', color: '#dc2626', fontWeight: '500'}}>{urun.toplamHurda}</td>
-                                  <td style={{padding: '12px'}}>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                      <button 
-                                        onClick={() => modalAc(urun, 'temizlemeStoku')}
-                                        style={{
-                                          fontSize: '12px',
-                                          backgroundColor: '#fef3c7',
-                                          color: '#92400e',
-                                          padding: '4px 8px',
-                                          borderRadius: '4px'
-                                        }}
-                                      >
-                                        ✏️ Tem. Stok
-                                      </button>
-                                      <button 
-                                        onClick={() => modalAc(urun, 'temizlemeyeGonder')}
-                                        disabled={urun.temizlemeStokuA === 0 && urun.temizlemeStokuB === 0}
-                                        style={{
-                                          fontSize: '12px',
-                                          backgroundColor: '#dbeafe',
-                                          color: '#1e40af',
-                                          padding: '4px 8px',
-                                          borderRadius: '4px'
-                                        }}
-                                      >
-                                        📤 Gönder
-                                      </button>
-                                      <button 
-                                        onClick={() => modalAc(urun, 'temizlemeDondu')}
-                                        disabled={urun.temizlemedekiA === 0 && urun.temizlemedekiB === 0}
-                                        style={{
-                                          fontSize: '12px',
-                                          backgroundColor: '#e9d5ff',
-                                          color: '#6b21a8',
-                                          padding: '4px 8px',
-                                          borderRadius: '4px'
-                                        }}
-                                      >
-                                        ✅ Döndü
-                                      </button>
-                                      <button 
-                                        onClick={() => modalAc(urun, 'paketleme')}
-                                        disabled={paketYapilabilir === 0}
-                                        style={{
-                                          fontSize: '12px',
-                                          backgroundColor: '#fed7aa',
-                                          color: '#92400e',
-                                          padding: '4px 8px',
-                                          borderRadius: '4px'
-                                        }}
-                                      >
-                                        📦 Paketleme
-                                      </button>
-                                      <button 
-                                        onClick={() => modalAc(urun, 'sevk')}
-                                        disabled={urun.paketlendi === 0}
-                                        style={{
-                                          fontSize: '12px',
-                                          backgroundColor: '#d1fae5',
-                                          color: '#065f46',
-                                          padding: '4px 8px',
-                                          borderRadius: '4px'
-                                        }}
-                                      >
-                                        🚚 Sevk
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800 text-sm leading-tight flex-1">{item.name}</h3>
+                    <button
+                      onClick={() => handleEdit(activeTab, item)}
+                      className="text-blue-600 hover:text-blue-700 ml-2"
+                    >
+                      <Edit2 size={16} />
+                    </button>
                   </div>
-                )}
-
-                {aktifSekme === 'hareketler' && (
-                  <div style={{backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden'}}>
-                    <div style={{padding: '16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb'}}>
-                      <h2 style={{fontSize: '20px', fontWeight: 'bold'}}>Geçmiş Hareketler</h2>
-                    </div>
-                    <div style={{overflowX: 'auto', maxHeight: '400px'}}>
-                      <table style={{width: '100%'}}>
-                        <thead style={{backgroundColor: '#f3f4f6', position: 'sticky', top: 0}}>
-                          <tr>
-                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Tarih</th>
-                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Ürün</th>
-                            <th style={{padding: '8px 16px', textAlign: 'left'}}>İşlem</th>
-                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Detaylar</th>
-                            <th style={{padding: '8px 16px', textAlign: 'left'}}>Kullanıcı</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {hareketler.length === 0 ? (
-                            <tr>
-                              <td colSpan="5" style={{textAlign: 'center', padding: '32px', color: '#6b7280'}}>
-                                Henüz hareket kaydı yok.
-                              </td>
-                            </tr>
-                          ) : (
-                            hareketler.map(hareket => (
-                              <tr key={hareket.id} style={{borderBottom: '1px solid #e5e7eb'}}>
-                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.tarih}</td>
-                                <td style={{padding: '8px 16px', fontWeight: '500'}}>{hareket.urunAd}</td>
-                                <td style={{padding: '8px 16px'}}>
-                                  <span style={{padding: '4px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontSize: '14px'}}>
-                                    {hareket.islem}
-                                  </span>
-                                </td>
-                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.detaylar}</td>
-                                <td style={{padding: '8px 16px', fontSize: '14px'}}>{hareket.kullanici}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                  
+                  <div className={`text-2xl font-bold mb-4 px-3 py-2 rounded-lg text-center ${getStockColor(item.stock)}`}>
+                    {item.stock.toLocaleString('tr-TR')} adet
                   </div>
-                )}
 
-                {yeniUrunModalAcik && (
-                  <div className="modal-overlay" onClick={() => setYeniUrunModalAcik(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                      <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '16px'}}>🆕 Yeni Ürün Ekle</h3>
-                      
-                      <div style={{marginBottom: '16px'}}>
-                        <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>Ürün Adı</label>
-                        <input
-                          type="text"
-                          style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
-                          value={yeniUrunAdi}
-                          onChange={(e) => setYeniUrunAdi(e.target.value)}
-                          placeholder="Örn: Ürün A, Model X, vb."
-                          autoFocus
-                        />
-                      </div>
-                      
-                      <div style={{display: 'flex', gap: '8px'}}>
-                        <button 
-                          onClick={yeniUrunEkle} 
-                          style={{
-                            flex: 1,
-                            backgroundColor: '#16a34a',
-                            color: 'white',
-                            padding: '8px',
-                            borderRadius: '4px'
-                          }}
-                        >
-                          Ekle
-                        </button>
-                        <button 
-                          onClick={() => { setYeniUrunModalAcik(false); setYeniUrunAdi(''); }} 
-                          style={{
-                            flex: 1,
-                            backgroundColor: '#d1d5db',
-                            padding: '8px',
-                            borderRadius: '4px'
-                          }}
-                        >
-                          İptal
-                        </button>
-                      </div>
-                    </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleStockChange(activeTab, item.id, -1)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    >
+                      <Minus size={18} />
+                      Çıkart
+                    </button>
+                    <button
+                      onClick={() => handleStockChange(activeTab, item.id, 1)}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      <Plus size={18} />
+                      Ekle
+                    </button>
                   </div>
-                )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
 
-                {modalAcik && (
-                  <div className="modal-overlay" onClick={() => setModalAcik(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                      <h3 style={{fontSize: '20px', fontWeight: 'bold', marginBottom: '8px'}}>{basliklar[islemTipi]}</h3>
-                      <p style={{color: '#6b7280', marginBottom: '16px'}}>Ürün: <strong>{secilenUrun?.ad}</strong></p>
-                      
-                      <div>
-                        {formAlanlari[islemTipi] && formAlanlari[islemTipi].map(alan => (
-                          <div key={alan.name} style={{marginBottom: '16px'}}>
-                            <label style={{display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '4px'}}>{alan.label}</label>
-                            {alan.type === 'select' ? (
-                              <select
-                                style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
-                                value={formData[alan.name] || ''}
-                                onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
-                              >
-                                <option value="">Seçin...</option>
-                                {alan.options.map(opt => (
-                                  <option key={opt} value={opt}>
-                                    {opt === 'ekle' ? 'Ekle (+)' : opt === 'cikar' ? 'Çıkar (-)' : opt}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type={alan.type}
-                                step={alan.step}
-                                style={{width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px'}}
-                                value={formData[alan.name] || ''}
-                                onChange={(e) => setFormData({...formData, [alan.name]: e.target.value})}
-                                max={alan.max}
-                              />
-                            )}
-                            {alan.max !== undefined && <p style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>Maksimum: {alan.max}</p>}
-                          </div>
-                        ))}
-                        
-                        <div style={{display: 'flex', gap: '8px', marginTop: '24px'}}>
-                          <button 
-                            onClick={handleKaydet} 
-                            style={{
-                              flex: 1,
-                              backgroundColor: '#2563eb',
-                              color: 'white',
-                              padding: '8px',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            Kaydet
-                          </button>
-                          <button 
-                            onClick={() => { setModalAcik(false); setFormData({}); }} 
-                            style={{
-                              flex: 1,
-                              backgroundColor: '#d1d5db',
-                              padding: '8px',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            İptal
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+        {/* History */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <AlertCircle className="text-blue-600" size={28} />
+            İşlem Geçmişi
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tarih</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Kategori</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ürün</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">İşlem</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Miktar</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Sebep</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Yeni Stok</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {history.slice(0, 20).map(entry => (
+                  <tr key={entry.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-600">{entry.date}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                        {categoryNames[entry.category]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-800">{entry.itemName}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        entry.action === 'Eklendi' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {entry.action}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-700">{entry.amount}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{entry.reason}</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-800">{entry.newStock.toLocaleString('tr-TR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="text-blue-600" size={28} />
+              <h3 className="text-xl font-bold text-gray-800">
+                {modalData.action === 'add' ? 'Stok Ekleme' : 'Stok Çıkarma'}
+              </h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Ürün</p>
+                <p className="font-semibold text-gray-800">{modalData.item?.name}</p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Mevcut Stok</p>
+                <p className="text-2xl font-bold text-gray-800">{modalData.item?.stock.toLocaleString('tr-TR')} adet</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {modalData.action === 'add' ? 'Eklenecek' : 'Çıkarılacak'} Miktar
+                </label>
+                <input
+                  type="number"
+                  value={modalData.amount}
+                  onChange={(e) => setModalData({ ...modalData, amount: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Miktar giriniz"
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Sebep <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={modalData.reason}
+                  onChange={(e) => setModalData({ ...modalData, reason: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={modalData.action === 'add' ? 'Örn: 250084 numaralı irsaliye ile B8 kutu geldi' : 'Örn: FO25012 siparişi için'}
+                  rows="3"
+                />
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Yeni Stok</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {((modalData.item?.stock || 0) + (modalData.action === 'add' ? modalData.amount : -modalData.amount)).toLocaleString('tr-TR')} adet
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-semibold"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={confirmStockChange}
+                  className={`flex-1 px-4 py-3 text-white rounded-lg transition font-semibold ${
+                    modalData.action === 'add' 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  Onayla
+                </button>
               </div>
             </div>
-          );
-        }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<UretimTakipSistemi />);
-    </script>
-</body>
-</html>
+export default InventoryManagement;
